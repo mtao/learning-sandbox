@@ -1,0 +1,96 @@
+#ifndef NEURAL_NETWORK_H
+#include "neural_network.h"
+#endif
+#ifndef NEURAL_NETWORK_IPL
+#define NEURAL_NETWORK_IPL
+#include "util.h" 
+#include <iostream>
+
+template <typename NeuronType>
+HomogeneousNeuralNetwork<NeuronType>::HomogeneousNeuralNetwork(const std::vector<unsigned int>& topology): m_topology(topology) {
+    const size_t num_rows = topology.size();
+
+    //initialize neurons
+    /*
+    m_neurons.resize(num_rows);
+    std::transform(topology.cbegin(), topology.cend(), num_rows.begin(), [](unsigned int size) -> NeuronRow {
+        return NeuronRow(size);
+    });
+    */
+
+    //initialize weights
+    m_weights.resize(num_rows-1);
+    internal::offset_pair_const<std::vector<unsigned int> > pair(topology);
+    for(auto&& wm = m_weights.begin(); wm != m_weights.end(); ++pair, ++wm) {
+        wm->resize(*pair.front,*pair.back);
+        *wm = WeightMatrix::Random(*pair.front,*pair.back);
+        //*wm = WeightMatrix::Constant(*pair.front,*pair.back,1);
+    }
+}
+
+template <typename NeuronType>
+auto HomogeneousNeuralNetwork<NeuronType>::operator()(const RowValues& start) const -> RowValues  {
+    RowValues v = start;
+    for(auto&& wm: m_weights) {
+        v = m_neuron(wm * v);
+    }
+    return v;
+}
+
+template <typename NeuronType>
+void HomogeneousNeuralNetwork<NeuronType>::backpropagate(const RowValues& start, const RowValues& target, double learning_rate, double error_scaling) {
+    std::vector<RowValues> vals(m_topology.size());
+    std::vector<RowValues> partials(m_topology.size());
+    vals.front() = start;
+
+    //Forward propagate
+    {
+        internal::offset_pair<std::vector<RowValues> > val_op(vals);
+        auto&& p_it = partials.begin();
+        *p_it = RowValues::Ones(m_topology.front());
+        ++p_it;
+        for(auto&& wm_it = m_weights.cbegin(); wm_it != m_weights.end(); ++wm_it, ++val_op, ++p_it) {
+            *val_op.front =*wm_it * *val_op.back;
+            *p_it = m_neuron.p(*val_op.front);
+            *val_op.front = m_neuron(*val_op.front);
+        }
+    }
+    //Backward Propagate
+    {
+        internal::offset_pair_const_reverse<std::vector<RowValues> > val_opcr(vals);
+        auto&& wm_it = m_weights.rbegin();
+        RowValues error = (*val_opcr.back - target);
+        auto&& p_it = partials.crbegin();
+
+        for(; wm_it != m_weights.rend(); ++wm_it, ++val_opcr) {
+            //Set the values for the image of the weight map
+            auto&& back = *val_opcr.back;
+            auto&& front = *val_opcr.front;
+            WeightMatrix dwm = (*p_it).cwiseProduct(error)*front.transpose();
+            ++p_it;
+            //TODO: understand why this is negative...
+            error =  -error_scaling*(wm_it->transpose() * (error)).cwiseProduct(*p_it);
+            *wm_it += learning_rate * dwm;
+
+
+        }
+    }
+
+
+
+
+}
+
+
+template <typename NeuronType>
+size_t HomogeneousNeuralNetwork<NeuronType>::num_starts() const {
+    return m_topology.front();
+}
+
+template <typename NeuronType>
+size_t HomogeneousNeuralNetwork<NeuronType>::num_ends() const {
+    return m_topology.back();
+}
+
+
+#endif
