@@ -23,7 +23,7 @@ struct Logistic: public Neuron_T<Logistic> {
 int main( int argc, char * argv[] ) {
 
     std::vector<unsigned int> top({2,1,2,1,1});
-    HomogeneousNeuralNetwork<Logistic> net(top);
+    HomogeneousNeuralNetwork<Logistic> net(top,true);
     Neuron_T<Logistic> l;
     int count=0;
     bool converged = false;

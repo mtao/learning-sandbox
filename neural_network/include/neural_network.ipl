@@ -7,20 +7,23 @@
 #include <iostream>
 
 template <typename NeuronType>
-HomogeneousNeuralNetwork<NeuronType>::HomogeneousNeuralNetwork(const std::vector<unsigned int>& topology): m_topology(topology) {
-    const size_t num_rows = topology.size();
+HomogeneousNeuralNetwork<NeuronType>::HomogeneousNeuralNetwork(const std::vector<unsigned int>& topology, bool bias): m_topology(topology), m_bias(bias) {
+    const size_t num_rows = m_topology.size();
+    if(m_bias) {
+        m_topology.front() += 1;
+    }
 
     //initialize neurons
     /*
     m_neurons.resize(num_rows);
-    std::transform(topology.cbegin(), topology.cend(), num_rows.begin(), [](unsigned int size) -> NeuronRow {
+    std::transform(m_topology.cbegin(), m_topology.cend(), num_rows.begin(), [](unsigned int size) -> NeuronRow {
         return NeuronRow(size);
     });
     */
 
     //initialize weights
     m_weights.resize(num_rows-1);
-    internal::offset_pair_const<std::vector<unsigned int> > pair(topology);
+    internal::offset_pair_const<std::vector<unsigned int> > pair(m_topology);
     for(auto&& wm = m_weights.begin(); wm != m_weights.end(); ++pair, ++wm) {
         wm->resize(*pair.front,*pair.back);
         *wm = WeightMatrix::Random(*pair.front,*pair.back);
@@ -30,7 +33,14 @@ HomogeneousNeuralNetwork<NeuronType>::HomogeneousNeuralNetwork(const std::vector
 
 template <typename NeuronType>
 auto HomogeneousNeuralNetwork<NeuronType>::operator()(const RowValues& start) const -> RowValues  {
-    RowValues v = start;
+    RowValues v;
+    if(m_bias) {
+        v.conservativeResize(start.size()+1);
+        v.topRows(start.size()) = start;
+        v(start.size()) = 1;
+    } else {
+        v= start;
+    }
     for(auto&& wm: m_weights) {
         v = m_neuron(wm * v);
     }
@@ -41,7 +51,13 @@ template <typename NeuronType>
 void HomogeneousNeuralNetwork<NeuronType>::backpropagate(const RowValues& start, const RowValues& target, double learning_rate, double error_scaling) {
     std::vector<RowValues> vals(m_topology.size());
     std::vector<RowValues> partials(m_topology.size());
-    vals.front() = start;
+    if(m_bias) {
+        vals.front().resize(start.size()+1);
+        vals.front().topRows(start.size()) = start;
+        vals.front()(start.size()) = 1;
+    } else {
+        vals.front() = start;
+    }
 
     //Forward propagate
     {

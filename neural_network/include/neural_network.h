@@ -13,7 +13,7 @@ class HomogeneousNeuralNetwork {
         typedef Eigen::MatrixXd WeightMatrix;
         typedef Eigen::VectorXd RowValues;
 
-        HomogeneousNeuralNetwork(const std::vector<unsigned int>& topology); 
+        HomogeneousNeuralNetwork(const std::vector<unsigned int>& topology, bool bias=false); 
         size_t num_starts() const;
         size_t num_ends() const;
         void backpropagate(const RowValues& start, const RowValues& target, double learning_rate = 0.2, double error_scaling = 10);
@@ -24,6 +24,7 @@ class HomogeneousNeuralNetwork {
         Neuron m_neuron;
         std::vector<unsigned int> m_topology;
         std::vector< WeightMatrix > m_weights;
+        bool m_bias = false;
 };
 
 
