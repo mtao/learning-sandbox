@@ -67,9 +67,9 @@ void HomogeneousNeuralNetwork<NeuronType>::backpropagate(const RowValues& start,
             auto&& back = *val_opcr.back;
             auto&& front = *val_opcr.front;
             WeightMatrix dwm = (*p_it).cwiseProduct(error)*front.transpose();
-            ++p_it;
             //TODO: understand why this is negative...
-            error =  -error_scaling*(wm_it->transpose() * (error)).cwiseProduct(*p_it);
+            error =  -error_scaling*(wm_it->transpose() * (error).cwiseProduct(*p_it));
+            ++p_it;
             *wm_it += learning_rate * dwm;
 
 

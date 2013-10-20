@@ -22,7 +22,7 @@ struct Logistic: public Neuron_T<Logistic> {
 
 int main( int argc, char * argv[] ) {
 
-    std::vector<unsigned int> top({2,1,1,1,1});
+    std::vector<unsigned int> top({2,1,2,1,1});
     HomogeneousNeuralNetwork<Logistic> net(top);
     Neuron_T<Logistic> l;
     int count=0;
@@ -50,6 +50,7 @@ int main( int argc, char * argv[] ) {
         }
                 if(error < threshold) {
                     std::cout << "Final Error: " << (error < threshold) << " " << error  << std::endl;
+                    std::cout << count << " iterations" << std::endl;
                     converged=true;
                     break;
                 }
